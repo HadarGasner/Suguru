@@ -1,123 +1,140 @@
-import tkinter as tk
-from tkinter import messagebox
+import matplotlib.pyplot as plt
 
-class SuguruGUI:
-    def __init__(self, master):
-        self.master = master
-        master.title("Suguru Solver")
+# board game
+board = [
+    [['A',0],['B',1],['B',4],['B',0],['C',1],['D',3],['D',0]],
+    [['A',0],['A',0],['A',0],['B',2],['B',0],['D',0],['D',0]],
+    [['A',0],['E',0],['E',0],['F',0],['F',0],['D',0],['G',0]],
+    [['H',0],['E',0],['E',0],['F',0],['F',0],['G',4],['G',0]],
+    [['H',0],['H',2],['H',0],['I',0],['J',0],['J',0],['G',0]],
+    [['K',0],['H',0],['L',0],['L',0],['J',0],['J',0],['G',5]],
+    [['K',0],['K',0],['L',0],['L',1],['J',3],['M',0],['M',0]]
+]
 
-        self.size = 5
-        self.entries = [[None for _ in range(self.size)] for _ in range(self.size)]
-        self.groups = [[0 for _ in range(self.size)] for _ in range(self.size)]
+row_len = len(board)
+col_len = len(board[0])
 
-        self.create_grid()
-        self.create_buttons()
 
-    def create_grid(self):
-        for i in range(self.size):
-            for j in range(self.size):
-                entry = tk.Entry(self.master, width=3, font=('Helvetica', 16), justify='center')
-                entry.grid(row=i, column=j, padx=2, pady=2)
-                self.entries[i][j] = entry
+unique_blocks = sorted(set(b[0] for row in board for b in row))
 
-    def create_buttons(self):
-        btn_frame = tk.Frame(self.master)
-        btn_frame.grid(row=self.size, column=0, columnspan=self.size, pady=10)
+# ************** board grafic ***********************
 
-        solve_btn = tk.Button(btn_frame, text="🔍 פתר", command=self.solve_gui, bg="#4CAF50", fg="white", font=('Helvetica', 12))
-        solve_btn.grid(row=0, column=0, padx=5)
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.set_xticklabels([])
+ax.set_yticklabels([])
+ax.set_xlim(0, col_len)
+ax.set_ylim(0, row_len)
 
-        clear_btn = tk.Button(btn_frame, text="🧼 נקה", command=self.clear_board, bg="#f44336", fg="white", font=('Helvetica', 12))
-        clear_btn.grid(row=0, column=1, padx=5)
+ax.invert_yaxis()  
 
-    def get_board_and_groups(self):
-        board = []
-        for i in range(self.size):
-            row = []
-            for j in range(self.size):
-                val = self.entries[i][j].get()
-                if val.isdigit():
-                    row.append(int(val))
-                else:
-                    row.append(0)
-            board.append(row)
-        return board
-
-    def set_board(self, board):
-        for i in range(self.size):
-            for j in range(self.size):
-                self.entries[i][j].delete(0, tk.END)
-                if board[i][j] != 0:
-                    self.entries[i][j].insert(0, str(board[i][j]))
-
-    def clear_board(self):
-        for i in range(self.size):
-            for j in range(self.size):
-                self.entries[i][j].delete(0, tk.END)
-
-    def solve_gui(self):
-        board = self.get_board_and_groups()
-        # קבוצות לדוגמה, תוכל להחליף או לבנות מחולל
-        groups = [
-            [1, 1, 2, 2, 2],
-            [3, 1, 4, 5, 5],
-            [3, 4, 4, 5, 6],
-            [3, 7, 6, 6, 6],
-            [7, 7, 8, 8, 8]
-        ]
-        if solve_suguru(board, groups):
-            self.set_board(board)
+# # Function to detect block boundaries
+def draw_block_border(block_char):
+    cells = [(r, c) for r in range(row_len) for c in range(col_len) if board[r][c][0] == block_char]
+    
+    for r, c in cells:
+        num = board[r][c][1]
+    # Check neighbors – if the neighbor is not in the same block, draw a thick line
+        if r == 0 or board[r-1][c][0] != block_char:
+            ax.plot([c, c+1], [r, r], color='black', linewidth=2)
         else:
-            messagebox.showerror("שגיאה", "אין פתרון חוקי ללוח.")
+            ax.plot([c, c+1], [r, r], color='black', linewidth=0.5)
+        if r == row_len-1 or board[r+1][c][0] != block_char:
+            ax.plot([c, c+1], [r+1, r+1], color='black', linewidth=2)
+        else: 
+            ax.plot([c, c+1], [r+1, r+1], color='black', linewidth=0.5)
+        if c == 0 or board[r][c-1][0] != block_char:
+            ax.plot([c, c], [r, r+1], color='black', linewidth=2)
+        else:
+            ax.plot([c, c], [r, r+1], color='black', linewidth=0.5)
+        if c == col_len-1 or board[r][c+1][0] != block_char:
+            ax.plot([c+1, c+1], [r, r+1], color='black', linewidth=2)
+        else:
+           ax.plot([c+1, c+1], [r, r+1], color='black', linewidth=0.5) 
 
-# ===== אלגוריתם פתרון סוגורו (כמו מקודם) =====
-def print_board(board):
-    for row in board:
-        print(" ".join(str(cell) if cell != 0 else "." for cell in row))
-    print()
+           # add number value of the block
+        ax.text(c + 0.5, r + 0.5, num, ha='center', va='center',
+                fontsize=18, color='black', weight='bold')
 
-def is_valid(board, groups, row, col, num):
-    for i in range(-1, 2):
-        for j in range(-1, 2):
-            r, c = row + i, col + j
-            if 0 <= r < len(board) and 0 <= c < len(board[0]):
-                if (r, c) != (row, col) and board[r][c] == num:
-                    return False
-    group_id = groups[row][col]
-    for r in range(len(board)):
-        for c in range(len(board[0])):
-            if groups[r][c] == group_id and board[r][c] == num:
+
+#******************** solve algoritem ********************
+
+def find_empty_block(blocks):
+    for r in range(row_len):
+        for c in range(col_len):  
+            if blocks[r][c][1] == 0:
+
+                return (r, c)
+    return None
+
+def find_block_size(block):
+    block_size = 0
+    for r in range(row_len):
+        for c in range(col_len):  
+            if board[r][c][0] == block:
+                block_size += 1
+    return block_size
+
+def is_valid(board, num, pos):
+       return is_valid_in_neighbors(board, num, pos) and is_valid_in_block(board, num, pos)
+
+# checks if placing a specific number num in the given position pos is valid within the same block
+def is_valid_in_block(board, num, pos):
+    for r in range(row_len):
+        for c in range(col_len):  
+            
+            if (pos[0] != r or pos[1] != c) and board[r][c][0] == board[pos[0]][pos[1]][0] and board[r][c][1] == num: 
                 return False
     return True
 
-def find_empty(board):
-    for i in range(len(board)):
-        for j in range(len(board[0])):
-            if board[i][j] == 0:
-                return i, j
-    return None
-
-def get_group_size(groups, group_id):
-    return sum(cell == group_id for row in groups for cell in row)
-
-def solve_suguru(board, groups):
-    empty = find_empty(board)
-    if not empty:
+# checks if position pos violates the rule of no repeated numbers in the neighboring 3×3 region surrounding the position.
+def is_valid_in_neighbors(board, num, pos):
+        r ,c = pos
+     
+        for i in range(r -1, r +2):
+            for j in range(c-1, c+2):
+                if i >= 0 and i < row_len and j >= 0 and j < col_len and ((i,j)  != pos):
+                   if  board[i][j][1]== num:
+                        return False
+        
         return True
-    row, col = empty
-    group_id = groups[row][col]
-    max_num = get_group_size(groups, group_id)
 
-    for num in range(1, max_num + 1):
-        if is_valid(board, groups, row, col, num):
-            board[row][col] = num
-            if solve_suguru(board, groups):
-                return True
-            board[row][col] = 0
-    return False
+def solve():
+    """
+    Attempts to solve the irregular Sudoku puzzle using backtracking.
+    - Finds the next empty cell.
+    - Determines the size of the block that cell belongs to.
+    - Tries all possible values from 1 to block_size.
+    - Recursively continues if a valid number is placed.
+    - Backtracks if needed.
+    """
 
-# הפעלת הממשק
+    find =  find_empty_block(board)
+    if not find:
+        return True
+    else:
+        row, col = find
+        block_size = find_block_size(board[row][col][0])
+        for num in range(1,block_size +1):
+            if is_valid(board, num, find):
+                board[row][col][1] = num
+
+                if solve():
+                    return True
+                
+                board[row][col][1] = 0
+
+#for block in unique_blocks:
+#    draw_block_border(block)
+def main():
+    solve()
+
+    for block in unique_blocks:
+        draw_block_border(block)
+
+    print(find_block_size('L'))
+
+    plt.title("Irregular Sudoku")
+    plt.show()
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = SuguruGUI(root)
-    root.mainloop()
+    main()
